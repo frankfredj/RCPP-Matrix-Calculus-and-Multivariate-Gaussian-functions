@@ -29,8 +29,11 @@ microbenchmark(apply(test_matrix, 2, sd), sdCa(test_matrix, ncores))
 #Test centering and scaling
 microbenchmark(scale(test_matrix), center_scaleCa(test_matrix, ncores))
 
-#Test centering and scaling + return cor
-microbenchmark(cor(test_matrix), fast_corCa(test_matrix, ncores))
+#Test covariance
+microbenchmark(cov(test_matrix), fast_covCa(test_matrix, ncores), times = 10)
+
+#Test corelation
+microbenchmark(cor(test_matrix), fast_corCa(test_matrix, ncores), times = 10)
 
 
 
@@ -60,7 +63,7 @@ tic()
 
 n_dim <- 50
 
-v_cov <- fast_corCa(data, ncores)
+v_cov <- fast_scale_and_corCa(data, ncores)
 eig <- eigs_sym(v_cov, 150, which = "LM")
 reduced_data <- data %*% eig$vectors 
 center_scaleCa(reduced_data, ncores)
@@ -115,8 +118,8 @@ L_vec <- c(L[upper.tri(L, diag = TRUE)])
 library("microbenchmark")
 library("MASS")
 
-microbenchmark(mvrnorm(1, mu, L), mvnrv_vec(mu, L_vec, 7))
-microbenchmark(mvrnorm(100, mu, L), mvnrv(mu, L_vec, 100, 7))
+microbenchmark(mvrnorm(1, mu, L), mvnrv_vec(mu, L_vec, ncores))
+microbenchmark(mvrnorm(100, mu, L), mvnrv(mu, L_vec, 100, ncores))
 
 
 sample_r <- mvnrv(mu, L_vec, 100, 7)
@@ -147,12 +150,12 @@ library("tmvnsim")
 sigma = t(L) %*% L
 
 microbenchmark(tmvnsim(100, ncol(L), sigma = sigma, lower = above, upper = below, means = mu),
-TruncMvnrv(mu, L_vec, above, below, 100, 7)
+TruncMvnrv(mu, L_vec, above, below, 100, ncores)
 	)
 
 
 sample_r <- tmvnsim(100, ncol(L), sigma = sigma, lower = above, upper = below, means = mu)$samp
-sample_cpp <- TruncMvnrv(mu, L_vec, above, below, 100, 7)
+sample_cpp <- TruncMvnrv(mu, L_vec, above, below, 100, ncores)
 
 cov_r <- var(sample_r)
 cov_cpp <- var(sample_cpp)
@@ -172,14 +175,14 @@ trumpt[which(is_above == 1)] <- above[which(is_above == 1)]
 trumpt[which(is_above == 0)] <- above[which(is_above == 0)]
 
 microbenchmark(tmvnsim(100, ncol(L), sigma = sigma, upper = below, means = mu),
-OneSideTruncMvnrv(mu, L_vec, is_above, trumpt, 100, 7)
+OneSideTruncMvnrv(mu, L_vec, is_above, trumpt, 100, ncores)
 	)
 
 upper <- rep(1,100)
 trumpt <- below
 
 sample_r <- tmvnsim(100, ncol(L), sigma = sigma, upper = below, means = mu)$samp
-sample_cpp <- OneSideTruncMvnrv(mu, L_vec, upper, below, 100, 7)
+sample_cpp <- OneSideTruncMvnrv(mu, L_vec, upper, below, 100, ncores)
 
 
 cov_r <- var(sample_r)
@@ -196,7 +199,7 @@ print(mean(abs(mean_r - mean_cpp)))
 
 #Test ghk integrals
 
-microbenchmark(ghk_two_side(L_vec, above, below, 50, 7), mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below, lower = above)$wts))
+microbenchmark(ghk_two_side(L_vec, above, below, 50, ncores), mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below, lower = above)$wts))
 
 ghk_tmv <- rep(0,100)
 ghk_rcpp <- rep(0,100)
@@ -204,7 +207,7 @@ ghk_rcpp <- rep(0,100)
 for(i in 1:100){
 
 ghk_tmv[i] <- mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below, lower = above)$wts)
-ghk_rcpp[i] <- ghk_two_side(L_vec, above, below, 50, 7)
+ghk_rcpp[i] <- ghk_two_side(L_vec, above, below, 50, ncores)
 
 }
 
@@ -215,7 +218,7 @@ var(ghk_rcpp) / var(ghk_tmv)
 
 
 
-microbenchmark(ghk_oneside(L_vec, below, upper, 50, 7), mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below)$wts))
+microbenchmark(ghk_oneside(L_vec, below, upper, 50, ncores), mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below)$wts))
 
 ghk_tmv <- rep(0,100)
 ghk_rcpp <- rep(0,100)
@@ -223,7 +226,7 @@ ghk_rcpp <- rep(0,100)
 for(i in 1:100){
 
 ghk_tmv[i] <- mean(tmvnsim(50, ncol(L), sigma = sigma, upper = below)$wts)
-ghk_rcpp[i] <- ghk_oneside(L_vec, below, upper, 50, 7)
+ghk_rcpp[i] <- ghk_oneside(L_vec, below, upper, 50, ncores)
 
 }
 
